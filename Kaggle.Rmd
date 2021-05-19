@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Load Packages
 ```{r}
-pacman::p_load(tidyverse, caret, tidymodels)
+pacman::p_load(tidyverse, caret, tidymodels, DataExplorer)
 ```
 
 ## Load Data
@@ -22,6 +22,13 @@ df_train <- read.csv("train.csv")
 
 ## Explore Data
 ```{r}
+df_train_exp <- df_train %>% select(-c(lnwage, ID)) %>% select(1:15)
+df_train_int_2 <- t(apply(df_train_exp, 1, combn, 2, prod)) %>% as_tibble()
+colnames(df_train_int_2) <- combn(colnames(df_train_exp), 2, paste, collapse="_x_")
+df_train_int_3 <-  t(apply(df_train_exp, 1, combn, 3, prod)) %>% as_tibble()
+colnames(df_train_int_3) <- combn(colnames(df_train_exp), 3, paste, collapse="_x_")
+df_train <- cbind(df_train, df_train_int_2, df_train_int_3)
 
+plot_scatterplot(df_train, by = "lnwage")
 ```
 
