@@ -1,0 +1,27 @@
+---
+title: "Kaggle"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load Packages
+```{r}
+pacman::p_load(tidyverse, caret, tidymodels)
+```
+
+## Load Data
+```{r}
+df_test <- read.csv("test.csv")
+df_train <- read.csv("train.csv")
+```
+
+## Explore Data
+```{r}
+
+```
+
