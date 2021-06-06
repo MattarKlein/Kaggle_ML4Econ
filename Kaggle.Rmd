@@ -23,7 +23,8 @@ df_train <- read.csv("train.csv")
 ## Explore Data
 ```{r}
 df_train %>% ggplot(aes(expf, lnwage)) +
-  geom_jitter(aes(color = female))
+  geom_jitter(aes(color = edyrs)) +
+  facet_wrap(black~female,)
 
 plot_scatterplot(df_train, by = "lnwage")
 plot_boxplot(df_train, by = "lnwage")
@@ -31,15 +32,22 @@ plot_bar(df_train)
 
 df_train_no_id <- df_train %>% select(-ID)
 
-df_train_int_vector <- df_train_no_id %>% select(black, south, expf, expfsq, msa, female, edyrs)
+df_train_no_id <- df_train_no_id[,1:16]
+
+df_train_int_vector <- df_train_no_id %>% select(-lnwage)
 
 df_train_int_2 <- t(apply(df_train_int_vector, 1, combn, 2, prod)) %>% as_tibble()
 colnames(df_train_int_2) <- combn(colnames(df_train_int_vector), 2, paste, collapse="_x_")
-df_train_no_id <- cbind(df_train_no_id, df_train_int_2)
+df_train_int_3 <- t(apply(df_train_int_vector, 1, combn, 3, prod)) %>% as_tibble()
+colnames(df_train_int_3) <- combn(colnames(df_train_int_vector), 3, paste, collapse="_x_")
+df_train_no_id <- cbind(df_train_no_id, df_train_int_2, df_train_int_3)
+
+plot_scatterplot(df_train_no_id, by = "lnwage")
+
 
 rec <- recipe(lnwage ~., df_train_no_id)
 
-cntrl <- trainControl(method = "repeatedcv")
+cntrl <- trainControl(method = "cv")
 
 tune <- expand.grid(interaction.depth = c(seq(1,5,1)),
                     n.trees = c(seq(100,1000,100)),
@@ -47,11 +55,12 @@ tune <- expand.grid(interaction.depth = c(seq(1,5,1)),
                     n.minobsinnode = c(5,10))
 
 train <- train(rec, df_train_no_id,
-  method = "gbm",
+  method = "glmnet",
   metric = "RMSE",
-  trControl = cntrl,
-  tuneGrid = tune
+  trControl = cntrl
 )
+
+model_part <- rpart(lnwage ~ ., df_train_temp)
 
 mod <- cubist(x = df_train_no_id %>% select(-lnwage),
               y = df_train_no_id$lnwage,
