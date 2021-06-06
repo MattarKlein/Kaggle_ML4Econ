@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Load Packages
 ```{r}
-pacman::p_load(tidyverse, caret, tidymodels, DataExplorer, rpart, rattle)
+pacman::p_load(tidyverse, caret, tidymodels, DataExplorer, rpart, rattle, rgl, h2o)
 ```
 
 ## Load Data
@@ -22,11 +22,55 @@ df_train <- read.csv("train.csv")
 
 ## Explore Data
 ```{r}
-df_train_exp <- df_train %>% select(-c(lnwage, ID))
+df_train %>% ggplot(aes(expf, lnwage)) +
+  geom_jitter(aes(color = female))
 
-df_train_int_2 <- t(apply(df_train_exp, 1, combn, 2, prod)) %>% as_tibble()
-colnames(df_train_int_2) <- combn(colnames(df_train_exp), 2, paste, collapse="_x_")
-df_train_int <- cbind(df_train, df_train_int_2) %>% select(-ID)
+plot_scatterplot(df_train, by = "lnwage")
+plot_boxplot(df_train, by = "lnwage")
+plot_bar(df_train)
+
+df_train_no_id <- df_train %>% select(-ID)
+
+df_train_int_vector <- df_train_no_id %>% select(black, south, expf, expfsq, msa, female, edyrs)
+
+df_train_int_2 <- t(apply(df_train_int_vector, 1, combn, 2, prod)) %>% as_tibble()
+colnames(df_train_int_2) <- combn(colnames(df_train_int_vector), 2, paste, collapse="_x_")
+df_train_no_id <- cbind(df_train_no_id, df_train_int_2)
+
+rec <- recipe(lnwage ~., df_train_no_id)
+
+cntrl <- trainControl(method = "repeatedcv")
+
+tune <- expand.grid(interaction.depth = c(seq(1,5,1)),
+                    n.trees = c(seq(100,1000,100)),
+                    shrinkage = c(seq(0.01,0.1,0.01)),
+                    n.minobsinnode = c(5,10))
+
+train <- train(rec, df_train_no_id,
+  method = "gbm",
+  metric = "RMSE",
+  trControl = cntrl,
+  tuneGrid = tune
+)
+
+mod <- cubist(x = df_train_no_id %>% select(-lnwage),
+              y = df_train_no_id$lnwage,
+              committees = 15,
+              neighbors = 3)
+
+dotplot(mod, what = "coefs")
+dotplot(mod, what = "splits")
+
+plot(train)
+
+plot(varImp(train))
+
+df_train <- preProcess(df_train %>% select(expf), method=c("center", "scale"))
+
+df_train %>% ggplot(aes(edyrs, expf)) +
+  geom_jitter(aes(color = lnwage)) +
+  scale_color_gradient2(midpoint=median(df_train$lnwage), low="blue", mid="white",
+                     high="red", space ="Lab" )
 
 ```
 
